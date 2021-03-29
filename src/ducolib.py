@@ -15,10 +15,12 @@ logging.basicConfig(filename='ducolib.log', level=logging.DEBUG,
 
 class Miner:
 
-    def __init__(self, username, UseLowerDiff):
+    def __init__(self, username, UseLowerDiff, rigname):
         self.username = username
         self.UseLowerDiff = UseLowerDiff
+        self.minerName = 'Glukhov Miner'
         self.soc = socket.socket()
+        self.rigname = rigname
         self.soc.settimeout(15)
 
     def mine(self):
@@ -43,7 +45,8 @@ class Miner:
             ).hexdigest()  # Generate hash
             if job[1] == ducos1:  # If result is even with job
                 self.soc.send(
-                    bytes(str(result) + ",,Minimal_PC_Miner", encoding="utf8")
+                    bytes(str(result) +
+                          f",,{self.minerName},{self.rigname}", encoding="utf8")
                 )  # Send result of hashing algorithm to pool
                 # Get feedback about the result
                 feedback = self.soc.recv(1024).decode()
@@ -120,20 +123,23 @@ class Miner:
 
 class MinerCrewChief:
 
-    def __init__(self, username, UseLowerDiff, threads):
+    def __init__(self, username, UseLowerDiff, threads, rigname):
 
         self.miners = []
         self.username = username
         self.UseLowerDiff = UseLowerDiff
         self.threads = threads
-        logging.info('Mining DUCO for {}'.format(self.username))
-        logging.info('Using Lower Mining Difficulty: '+str(self.UseLowerDiff))
+        self.rigname = rigname
+        logging.info('Mining DUCO for {} with Glukhov Miner :)'.format(
+            self.username))
+        logging.info('Using Lower Mining Difficulty: {}. On rig: {}'.format(
+            self.UseLowerDiff, self.rigname))
 
     def start_mining(self):
         if self.threads == 'auto':
             self.threads = os.cpu_count()
-        for i in range(self.threads):
-            m = Miner(self.username, self.UseLowerDiff)
+        for i in range(int(self.threads)):
+            m = Miner(self.username, self.UseLowerDiff, self.rigname)
             m.start_mining()
             logging.info('Mining Started on Thread {}!'.format(i))
             self.miners.append(m)
@@ -152,11 +158,11 @@ class MinerCrewChief:
     def check_status(self):
         """For every miner:
         returs a copy of the current mine() method buffer."""
-        states=[]
+        states = []
         try:
             for m in self.miners:
-                s=m.check_status()
-                s=s.strip()
+                s = m.check_status()
+                s = s.strip()
                 states.append(s)
 
         except NameError:
@@ -164,9 +170,50 @@ class MinerCrewChief:
 
         return states
 
+
 if __name__ == "__main__":
-    #workers = MinerCrewChief('Alicia426', True, 'auto')
-    workers = MinerCrewChief('Alicia426', False, 'auto')
-    workers.start_mining()
-    time.sleep(500)
-    workers.stop_mining()
+    try:
+        print('Welcome to the Glukhov Miner :)')
+        prog = sys.argv[0]
+        user = sys.argv[1]
+        try:
+            diff = sys.argv[2]
+            if diff.lower() in ['true', 'easy']:
+                diff = True
+            elif diff.lower() in ['false', 'net', 'network']:
+                diff = False
+            else:
+                print('Invalid input, setting difficulty to default.')
+        except IndexError:
+            diff = False
+            print('-> No difficulty specified, using default')
+        try:
+            threads = sys.argv[3]
+        except IndexError:
+            threads = 'auto'  # Full power default
+        try:
+            rigname = sys.argv[4]
+        except IndexError:
+            rigname = 'Ducolib'
+        try:
+            seshDuration = sys.argv[5]
+            seshDuration = int(seshDuration)*3600
+        except IndexError:
+            seshDuration = 3600 * 8
+        print('-> Mining for: ', user)
+        print('-> Using lower difficulty:', diff)
+        print('-> Threads:', threads, 'With Rig:', rigname)
+        print('-> Mining session duration(seconds):',seshDuration)
+        #workers = MinerCrewChief('Alicia426', True, 'auto')
+        workers = MinerCrewChief(user, diff, threads, rigname)
+        workers.start_mining()
+        for second in range(seshDuration):
+            state=workers.check_status()
+            print(state[0])
+            print(state[1])
+            time.sleep(1)
+        workers.stop_mining()
+    except IndexError as e:
+        msg = 'Attempted to run as CLI tool, but no correct arguments were given'
+        logging.warning(msg)
+        print(msg)
