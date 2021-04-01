@@ -19,9 +19,8 @@ class Miner:
         self.username = username
         self.UseLowerDiff = UseLowerDiff
         self.minerName = 'Glukhov Miner'
-        self.soc = socket.socket()
         self.rigname = rigname
-        self.soc.settimeout(15)
+
 
     def mine(self):
         current_buffer = ''
@@ -63,6 +62,8 @@ class Miner:
     def requestAndMine(self):
         while True:
             try:
+                self.soc = socket.socket()
+                self.soc.settimeout(15)
                 # This sections grabs pool adress and port from Duino-Coin GitHub file
                 serverip = "https://raw.githubusercontent.com/revoxhere/duino-coin/gh-pages/serverip.txt"  # Serverip file
                 with urllib.request.urlopen(serverip) as content:
@@ -81,21 +82,28 @@ class Miner:
                 # Mining section
                 while True:
                     buff = self.mine()
-                    if 'Accepted' in buff:
-                        logging.info(buff)
-                    elif 'Rejected' in buff:
-                        logging.warning(buff)
-                    else:
-                        logging.warning('Empty buffer, likely error')
-
-            except Exception as e:
-                logging.error("Error occured: " + str(e) +
-                              ", restarting in 5s.")
-                time.sleep(5)
+                    try:
+                        if 'Accepted' in buff:
+                            logging.info(buff)
+                        elif 'Rejected' in buff:
+                            logging.warning(buff)
+                        else:
+                            logging.warning('Empty buffer, likely error')
+                    except Exception:
+                        pass
                 try:
                     self.soc.close()
                 except Exception as e:
                     logging.warning(str(e))
+
+            except Exception as e:
+                try:
+                    self.soc.close()
+                except Exception as e:
+                    logging.warning(str(e))
+                logging.error(str(e)+' Restarting...')
+                time.sleep(10)
+
 
     def start_mining(self):
         """Starts mining as a process"""
@@ -203,15 +211,12 @@ if __name__ == "__main__":
         print('-> Mining for: ', user)
         print('-> Using lower difficulty:', diff)
         print('-> Threads:', threads, 'With Rig:', rigname)
-        print('-> Mining session duration(seconds):',seshDuration)
+        print('-> Mining session duration(seconds):', seshDuration)
         #workers = MinerCrewChief('Alicia426', True, 'auto')
         workers = MinerCrewChief(user, diff, threads, rigname)
         workers.start_mining()
-        for second in range(seshDuration):
-            state=workers.check_status()
-            print(state[0])
-            print(state[1])
-            time.sleep(1)
+        print("-> Now mining, don't close the terminal :)")
+        time.sleep(seshDuration)
         workers.stop_mining()
     except IndexError as e:
         msg = 'Attempted to run as CLI tool, but no correct arguments were given'

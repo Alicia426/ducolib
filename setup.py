@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="ducolib",  # Replace with your own username
-    version="0.0.1",
+    version="0.0.2",
     author="Alicia426",
     author_email="alicia426@protonmail.com",
     description="Duino-Coin Mining library for Python.",
